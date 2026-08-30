@@ -1,0 +1,11 @@
+# Binary release allowlist
+# Left side is the project path; right side is the name inside the release package.
+
+build/MHWI-VisualControllerExtended.dll -> MHWI-VisualControllerExtended.dll
+MHWI-VisualControllerExtended.ini -> MHWI-VisualControllerExtended.ini
+README.md -> README.md
+LICENSE -> LICENSE
+THIRD_PARTY_NOTICES.md -> THIRD_PARTY_NOTICES.md
+DEVELOPMENT.md -> DEVELOPMENT.md
+third_party/minhook/LICENSE.txt -> MINHOOK_LICENSE.txt
+MHW_TOOLKIT_LICENSE.txt -> MHW_TOOLKIT_LICENSE.txt

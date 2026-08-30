@@ -1,0 +1,30 @@
+# CMake and compiler output
+/build/
+/out/
+/dist/
+/cmake-verify/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.obj
+*.o
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.dll
+*.exe
+
+# Runtime and crash diagnostics
+*.log
+*.dmp
+
+# IDE and operating-system metadata
+.vs/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+Desktop.ini

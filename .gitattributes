@@ -1,0 +1,9 @@
+* text=auto
+
+*.bat text eol=crlf
+*.ini text eol=crlf
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
