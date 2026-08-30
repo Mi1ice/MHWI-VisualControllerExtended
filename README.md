@@ -27,30 +27,6 @@ MinHook 返回的下一处理器。
 提高到 5000；允许范围是 0–30000 毫秒。不同 Hook 库之间无法保证绝对兼容，日志出现
 `hook installed via MinHook` 才表示本插件安装成功。
 
-## 工作原理
-
-1. 注入后在 MonsterHunterWorld.exe 内扫描受支持版本的函数定位签名（可用 ini 的
-   TargetRva 或 Signature 覆盖）；若入口已被更早的通用 Hook 改写，则尝试通过唯一的
-   签名尾部恢复入口地址，最终由 MinHook 解析并创建 trampoline；
-2. 挂钩的是游戏内"按 ID 查询布尔开关"的函数（ID = *(uint16*)(r8+IdOffset)）；
-3. 后台线程每 PollMs 毫秒安全读取以下状态并发布一致快照：
-   练气 spirit = *(*(Entity+0x76B0)+0x2370)；
-   鬼人化 demon = *(*(Entity+0x76B0)+0x2368)（开=1 关=0，实测确认）；
-   鬼人强化 archdemon = *(*(Entity+0x76B0)+0x2369)（开=1 关=0）；
-   动作 lmt  = *(*(Entity+0x468)+0xE9C4)；
-   当前血量 = *(*(Entity+0x7630)+0x64)，最大血量 = *(*(Entity+0x7630)+0x60)；
-   武器类型  = *(*(*(*(Entity+0xC0)+0x8)+0x78)+0x2E8)。
-
-   detour 不再直接遍历这些游戏指针，只读取已发布的快照。人物加载期间快照未就绪时，
-   有状态条件的规则会透传原游戏函数；血量百分比会限制在 0%–100%，最大血量无效时
-   不发布血量状态。这也避免与安装向量异常处理器的 MOD（如 MHWSS）冲突。
-
-> 练气、鬼人化与鬼人强化位于同一个武器状态子对象；鬼人化和鬼人强化是
-> `+0x2368/+0x2369` 两个相邻字节。武器信息对象的类型字段在 Entity+0x76B0+0x9F8。
-
-4. detour 按 [RuleN] 顺序匹配（Id + WeaponType/Spirit/Lmt/Demon/Archdemon/HealthPercent 条件），
-   命中即返回配置值；未命中任何规则的 ID 透传给原函数。
-
 ## 规则配置
 
     ; 双刀鬼人化示例（已写入附带 ini）：
