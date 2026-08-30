@@ -1,6 +1,6 @@
 # MHWI-VisualControllerExtended
 
-《怪物猎人：世界》（15.23.00）「视觉项 ID 返回值控制」原生 DLL 插件。
+《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
 当前版本：1.1.0。
 
 ## 构建
@@ -10,13 +10,16 @@
 
 ## 安装
 
-把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏 nativePC\plugins\，需求前置：Stracker's Loader。
-兼容visual_controller_v5。建议使用狩技 mod 盒子加载。
+把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏根目录 nativePC\plugins\中。
+需求前置 Stracker's Loader。
+建议使用狩技 mod 盒子加载。
 
 所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
 DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 
 ## 规则配置
+
+配置文件规则示例：
 
     ; 双刀鬼人化示例：
     [Rule1]
@@ -69,19 +72,19 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 条件键汇总：Id（必填）、WeaponType（武器类型精确匹配）、Spirit（练气精确匹配）、SpiritMin/SpiritMax（练气范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化精确匹配 0/1）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化精确匹配 0/1）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（严格大于指定百分比）、Return（1/0）。
 `Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
 
-附带 ini 当前包含 55 条规则，按功能分为：
+兼容原变身插件规则：
 
-- 双刀状态（规则 1–8）：ID20/21 分别在鬼人化/鬼人强化成立时显示；ID22/23 分别在
-  鬼人化/鬼人强化成立时隐藏。
-- 动作 LMT（规则 9–12）：ID30 对应 LMT `<0x8000`，ID31 对应 LMT `>=0x8000`。
-- 太刀精确练气（规则 13–21）：ID32/33/34/35 分别对应无刃、白刃、黄刃、红刃。
-- 太刀累计显示（规则 22–25）：ID36 白刃及以上，ID37 黄刃及以上。
-- 太刀达标隐藏（规则 26–31）：ID38 白刃及以上隐藏，ID39 黄刃及以上隐藏，ID40 红刃隐藏。
-- 血量互斥分段（规则 32–41）：ID50=`0%`，ID51=`(0%,25%]`，ID52=`(25%,50%]`，
-  ID53=`(50%,75%]`，ID54=`(75%,100%]`；对应区间内显示。
-- 血量累计显示（规则 42–47）：ID55/56/57 分别在血量 `<=25%/50%/75%` 时显示。
-- 血量累计隐藏（规则 48–55）：ID58 在血量为0时隐藏；ID59/60/61 分别在血量
-  `<=25%/50%/75%` 时隐藏。
+- 收刀、拔刀：ID30 对应收刀，ID31 对应拔刀。
+- 太刀精确练气：ID32/33/34/35 分别对应无刃、白刃、黄刃、红刃。
+
+插件新增规则：
+
+- 双刀鬼人化状态：ID20/21 分别在鬼人化/鬼人强化成立时显示；ID22/23 分别在鬼人化/鬼人强化成立时隐藏。
+- 太刀累计显示：ID36 白刃及以上显示，ID37 黄刃及以上显示。
+- 太刀累计隐藏：ID38 白刃及以上隐藏，ID39 黄刃及以上隐藏，ID40 红刃隐藏。
+- 血量分段显示：ID50=`0%`，ID51=`(0%,25%]`，ID52=`(25%,50%]`，ID53=`(50%,75%]`，ID54=`(75%,100%]`；对应区间内显示。
+- 血量累计显示：ID55/56/57 分别在血量 `<=25%/50%/75%` 时显示。
+- 血量累计隐藏：ID58 在血量为0时隐藏；ID59/60/61 分别在血量 `<=25%/50%/75%` 时隐藏。
 
 ## 热键与指令
 
