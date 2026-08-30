@@ -11,21 +11,12 @@
 ## 安装
 
 把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏 nativePC\plugins\，
-使用 Stracker's Loader / 狩技 mod 盒子加载。
+需求前置：Stracker's Loader。
+建议使用狩技 mod 盒子加载。
 
 所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的
 `[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
 DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
-
-### 与其他 inline hook MOD 共存
-
-保持 ini 中 `WaitForEarlierHook=1`。插件默认等待 `HookWaitMs=2000`，让更早加载的 Hook
-先完成安装，再由 MinHook 基于当时的函数入口创建 trampoline。未命中的 ID 会调用
-MinHook 返回的下一处理器。
-
-如果没有其他 MOD 挂钩同一函数，可将 `HookWaitMs=0`。如果加载顺序不稳定，可把等待时间
-提高到 5000；允许范围是 0–30000 毫秒。不同 Hook 库之间无法保证绝对兼容，日志出现
-`hook installed via MinHook` 才表示本插件安装成功。
 
 ## 规则配置
 
