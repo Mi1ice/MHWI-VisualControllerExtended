@@ -10,17 +10,15 @@
 
 ## 安装
 
-把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏 nativePC\plugins\，
-需求前置：Stracker's Loader。
+把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏 nativePC\plugins\，需求前置：Stracker's Loader。
 建议使用狩技 mod 盒子加载。
 
-所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的
-`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
+所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
 DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 
 ## 规则配置
 
-    ; 双刀鬼人化示例（已写入附带 ini）：
+    ; 双刀鬼人化示例：
     [Rule1]
     Id=20
     WeaponType=2      ; 双刀
@@ -68,13 +66,8 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
     Id=30
     Return=0          ; 否则隐藏 ID 30 下全部网格
 
-条件键汇总：Id（必填）、WeaponType（武器类型精确匹配）、Spirit（练气精确匹配）、
-SpiritMin/SpiritMax（练气范围）、LmtMin/LmtMax（动作 lmt 范围）、
-Demon（鬼人化精确匹配 0/1）、DemonMin/DemonMax（鬼人化范围）、
-Archdemon（鬼人强化精确匹配 0/1）、HealthPercentMin/HealthPercentMax
-（血量百分比范围，包含边界）、HealthPercentAbove（严格大于指定百分比）、Return（1/0）。
-`Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。
-范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
+条件键汇总：Id（必填）、WeaponType（武器类型精确匹配）、Spirit（练气精确匹配）、SpiritMin/SpiritMax（练气范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化精确匹配 0/1）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化精确匹配 0/1）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（严格大于指定百分比）、Return（1/0）。
+`Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
 
 附带 ini 当前包含 55 条规则，按功能分为：
 
@@ -99,20 +92,15 @@ Archdemon（鬼人强化精确匹配 0/1）、HealthPercentMin/HealthPercentMax
 | /vc status | 聊天栏显示 hook 状态、血量、练气、鬼人化、鬼人强化、动作、武器及 fsm |
 | /vc reload、/vc on、/vc off、/vc help | 同热键 / 帮助 |
 
-日志写在 DLL 同目录 MHWI-VisualControllerExtended.log，含每 4 秒的状态心跳，
-可用于观察各状态值随游戏行为的变化。
+日志写在 DLL 同目录 MHWI-VisualControllerExtended.log，含每 4 秒的状态心跳，可用于观察各状态值随游戏行为的变化。
 
 ## 已知限制
 
-- detour 当前按已验证接口转发 4 个寄存器参数；若后续游戏版本开始使用额外堆栈参数，
-  需要同步更新函数声明。
-- 内存地址针对 15.23.00；游戏更新后需更新 PlayerRoot / 消息缓冲地址，
-  目标函数由签名扫描定位，通常不受版本影响。
+- detour 当前按已验证接口转发 4 个寄存器参数；若后续游戏版本开始使用额外堆栈参数，需要同步更新函数声明。
+- 内存地址针对 15.23.00；游戏更新后需更新 PlayerRoot / 消息缓冲地址，目标函数由签名扫描定位，通常不受版本影响。
 - 状态条件最多有约 PollMs 毫秒的快照延迟；默认 60ms，换取加载期和跨 MOD 的稳定性。
 
 ## 许可与免责
 
-项目自身代码采用 MIT License。MinHook、WeaponSoundEnhance 和 mhw-toolkit 的许可证及
-版权声明见 `THIRD_PARTY_NOTICES.md`；发布包同时附带完整的 MinHook/HDE 与
-mhw-toolkit Apache-2.0 许可证文本。
+项目自身代码采用 MIT License。MinHook、WeaponSoundEnhance 和 mhw-toolkit 的许可证及版权声明见 `THIRD_PARTY_NOTICES.md`；发布包同时附带完整的 MinHook/HDE 与 mhw-toolkit Apache-2.0 许可证文本。
 使用前建议备份存档。
