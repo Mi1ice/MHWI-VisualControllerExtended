@@ -1,6 +1,6 @@
 # MHWI-VisualControllerExtended
 
-给《怪物猎人：世界 / 冰原》（15.23.00）的「视觉项 ID 返回值控制」原生 DLL 插件。
+《怪物猎人：世界》（15.23.00）「视觉项 ID 返回值控制」原生 DLL 插件。
 当前版本：1.1.0。
 
 ## 构建
@@ -11,7 +11,7 @@
 ## 安装
 
 把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏 nativePC\plugins\，需求前置：Stracker's Loader。
-建议使用狩技 mod 盒子加载。
+兼容visual_controller_v5。建议使用狩技 mod 盒子加载。
 
 所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
 DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
@@ -104,4 +104,5 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 ## 许可与免责
 
 项目自身代码采用 MIT License。MinHook、WeaponSoundEnhance 和 mhw-toolkit 的许可证及版权声明见 `THIRD_PARTY_NOTICES.md`；发布包同时附带完整的 MinHook/HDE 与 mhw-toolkit Apache-2.0 许可证文本。
+
 使用前建议备份存档。
