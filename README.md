@@ -51,7 +51,7 @@ MinHook 返回的下一处理器。
 4. detour 按 [RuleN] 顺序匹配（Id + WeaponType/Spirit/Lmt/Demon/Archdemon/HealthPercent 条件），
    命中即返回配置值；未命中任何规则的 ID 透传给原函数。
 
-## 规则配置（WeaponType: 3=太刀 10=虫棍；Spirit: 太刀练气 0无/1白/2黄/3红）
+## 规则配置
 
     ; 双刀鬼人化示例（已写入附带 ini）：
     [Rule1]
