@@ -3,18 +3,6 @@
 给《怪物猎人：世界 / 冰原》（15.23.00）的「视觉项 ID 返回值控制」原生 DLL 插件。
 当前版本：1.1.0。
 
-项目由规则引擎、安全状态快照和通用 Hook 后端组成：
-
-1. **ID 规则通过 ini 配置**——新增/修改 ID 只需通过编辑 ini 并重载；
-2. **安全状态快照**——后台线程带页级校验地读取玩家状态并原子发布，detour 只读快照；
-   人物尚未加载或规则所需字段无效时直接透传，避免用访问冲突和 SEH 作为正常控制流；
-3. Hook 创建、指令重定位、trampoline 和线程协调由 MinHook v1.3.4 负责；
-4. 可在等待其他通用 inline hook 安装后再挂钩，兼容性由 MinHook trampoline 提供；
-5. 静态 CRT（/MT），只依赖 KERNEL32/USER32，无 VCRUNTIME 依赖。
-
-项目来源和重构边界见 [DEVELOPMENT.md](DEVELOPMENT.md)，第三方许可证见
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-
 ## 构建
 
 双击 build.bat（自动定位 vcvars64 并调用 cl.exe），产物在 build\MHWI-VisualControllerExtended.dll。
