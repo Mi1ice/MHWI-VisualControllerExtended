@@ -69,7 +69,7 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
     Id=30
     Return=0          ; 否则隐藏 ID 30 下全部网格
 
-条件键汇总：Id（必填）、WeaponType（武器类型精确匹配）、Spirit（练气精确匹配）、SpiritMin/SpiritMax（练气范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化精确匹配 0/1）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化精确匹配 0/1）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（严格大于指定百分比）、Return（1/0）。
+条件键汇总：Id（必填）、WeaponType（武器类型）、Spirit（练气值）、SpiritMin/SpiritMax（练气值范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（血量百分比大于）、Return（1/0）。
 `Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
 
 兼容原变身插件规则：
