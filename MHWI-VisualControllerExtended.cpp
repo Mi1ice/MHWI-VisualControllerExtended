@@ -113,6 +113,9 @@ inline std::int32_t ReadI32(std::uintptr_t address, std::int32_t defaultValue)
 
 } // namespace mem
 
+void ResetRuleLatches();
+void ObserveHealthForLatchReset(float healthPercent);
+
 // ===========================================================================
 //  玩家实时状态（轮询线程安全读取并发布快照，供 detour、日志和聊天显示）
 //    练气 spirit = *(*(Entity+0x76B0) + 0x2370)
@@ -162,8 +165,12 @@ StateSnapshot gPublishedState;
 void PublishState(const StateSnapshot& state)
 {
     ::AcquireSRWLockExclusive(&gStateLock);
+    const bool entityChanged = gPublishedState.entityAddress != state.entityAddress;
     gPublishedState = state;
     ::ReleaseSRWLockExclusive(&gStateLock);
+
+    if (entityChanged) ResetRuleLatches();
+    ObserveHealthForLatchReset(state.healthPercent);
 
     // 保留这些展开字段供日志和聊天状态显示。
     gManagerAddress = state.managerAddress;
@@ -276,6 +283,7 @@ struct IdRule {
     float healthPercentMin;   // 血量百分比下限(含)，负数不限
     float healthPercentMax;   // 血量百分比上限(含)，负数不限
     float healthPercentAbove; // 血量百分比严格下限(不含)，负数不限
+    std::int32_t latchUntilHealthZero; // 命中后锁存返回值，血量归零时复位
     std::int32_t result;      // 1=true 0=false
 };
 
@@ -283,6 +291,58 @@ const int kMaxRules = 128;
 IdRule gRuleBuffers[2][kMaxRules];
 int gRuleCounts[2] = {0, 0};
 volatile LONG gActiveRuleBuffer = 0;
+
+// 每个查询 ID 一个锁存槽。低两位编码状态（0=未锁存、1=false、2=true），
+// 高位保存复位代次；递增代次即可让所有旧锁存一次性失效。
+const int kLatchIdCount = 1 << 16;
+const LONG kLatchEpochMask = 0x1FFFFFFF;
+volatile LONG gLatchEpoch = 1;
+volatile LONG gLatchStates[kLatchIdCount] = {};
+volatile LONG gHealthZeroSeen = 0;
+
+LONG CurrentLatchEpoch()
+{
+    return ::InterlockedCompareExchange(&gLatchEpoch, 0, 0);
+}
+
+void ResetRuleLatches()
+{
+    LONG oldEpoch = CurrentLatchEpoch();
+    for (;;) {
+        LONG nextEpoch = (oldEpoch + 1) & kLatchEpochMask;
+        if (nextEpoch == 0) nextEpoch = 1;
+        const LONG observed = ::InterlockedCompareExchange(&gLatchEpoch, nextEpoch, oldEpoch);
+        if (observed == oldEpoch) return;
+        oldEpoch = observed;
+    }
+}
+
+void ObserveHealthForLatchReset(float healthPercent)
+{
+    if (healthPercent < 0.0f) return;
+    if (healthPercent <= 0.0f) {
+        if (::InterlockedCompareExchange(&gHealthZeroSeen, 1, 0) == 0)
+            ResetRuleLatches();
+    } else {
+        ::InterlockedExchange(&gHealthZeroSeen, 0);
+    }
+}
+
+int ReadLatchedResult(unsigned short id, LONG epoch)
+{
+    const LONG encoded = ::InterlockedCompareExchange(&gLatchStates[id], 0, 0);
+    if ((encoded >> 2) != epoch) return -1;
+    const LONG state = encoded & 3;
+    if (state == 1) return 0;
+    if (state == 2) return 1;
+    return -1;
+}
+
+void LatchResult(unsigned short id, bool result, LONG epoch)
+{
+    const LONG encoded = (epoch << 2) | (result ? 2 : 1);
+    ::InterlockedExchange(&gLatchStates[id], encoded);
+}
 
 // ===========================================================================
 //  Hook backend
@@ -678,6 +738,7 @@ void OnIniValue(const std::string& section, const std::string& key,
         r.healthPercentMin = -1.0f;
         r.healthPercentMax = -1.0f;
         r.healthPercentAbove = -1.0f;
+        r.latchUntilHealthZero = 0;
         buildContext->rules.push_back(r);
     }
     IdRule& rule = buildContext->rules[idx - 1];
@@ -695,6 +756,8 @@ void OnIniValue(const std::string& section, const std::string& key,
     else if (key == "HealthPercentMin")   rule.healthPercentMin = ParseFloat(value);
     else if (key == "HealthPercentMax")   rule.healthPercentMax = ParseFloat(value);
     else if (key == "HealthPercentAbove") rule.healthPercentAbove = ParseFloat(value);
+    else if (key == "LatchUntilHealthZero")
+        rule.latchUntilHealthZero = atoi(value.c_str()) != 0 ? 1 : 0;
     else if (key == "Return")     rule.result = atoi(value.c_str()) != 0 ? 1 : 0;
 }
 
@@ -711,6 +774,7 @@ void PublishRules(const std::vector<IdRule>& rules)
     }
     gRuleCounts[targetBuffer] = publishedCount;
     ::InterlockedExchange(&gActiveRuleBuffer, targetBuffer);
+    ResetRuleLatches();
 }
 
 void LoadConfig()
@@ -815,6 +879,7 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
         const LONG activeBuffer = ::InterlockedCompareExchange(&gActiveRuleBuffer, 0, 0);
         const IdRule* rules = gRuleBuffers[activeBuffer];
         const int ruleCount = gRuleCounts[activeBuffer];
+        const LONG latchEpoch = CurrentLatchEpoch();
         // 先算出该 ID 的规则需要哪些状态，再读取后台线程发布的安全快照。
         unsigned requirements = 0;
         for (int ruleIndex = 0; ruleIndex < ruleCount; ++ruleIndex) {
@@ -826,7 +891,8 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             if (rule.demon >= 0 || rule.demonMin >= 0 || rule.demonMax >= 0) requirements |= kNeedsDemonMode;
             if (rule.archdemon >= 0) requirements |= kNeedsArchdemonMode;
             if (rule.healthPercentMin >= 0.0f || rule.healthPercentMax >= 0.0f ||
-                rule.healthPercentAbove >= 0.0f) requirements |= kNeedsHealthPercent;
+                rule.healthPercentAbove >= 0.0f || rule.latchUntilHealthZero)
+                requirements |= kNeedsHealthPercent;
         }
         int spiritLevel = -1;
         int actionLmt = -1;
@@ -838,6 +904,11 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             !gStateReader(requirements, spiritLevel, actionLmt, weaponType,
                           demonMode, archdemonMode, healthPercent)) {
             return gOriginalFunction(firstArgument, secondArgument, queryObject, fourthArgument);
+        }
+        ObserveHealthForLatchReset(healthPercent);
+        if (healthPercent > 0.0f) {
+            const int latchedResult = ReadLatchedResult(id, latchEpoch);
+            if (latchedResult >= 0) return latchedResult != 0;
         }
         for (int ruleIndex = 0; ruleIndex < ruleCount; ++ruleIndex) {
             const IdRule& rule = rules[ruleIndex];
@@ -855,7 +926,13 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             if (rule.healthPercentMin >= 0.0f && healthPercent < rule.healthPercentMin) continue;
             if (rule.healthPercentMax >= 0.0f && healthPercent > rule.healthPercentMax) continue;
             if (rule.healthPercentAbove >= 0.0f && healthPercent <= rule.healthPercentAbove) continue;
-            return rule.result != 0;
+            const bool result = rule.result != 0;
+            if (rule.latchUntilHealthZero) {
+                // 0% 是复位条件，不能在同一次查询中重新触发锁存。
+                if (healthPercent <= 0.0f) continue;
+                LatchResult(id, result, latchEpoch);
+            }
+            return result;
         }
     }
     return gOriginalFunction
@@ -1368,51 +1445,85 @@ int main()
     testHealthPercent = 100.01f;
     Expect("hp=100.01 id54", RunId(54), 0);
 
-    // ---- 人物血量百分比累计上限（55<=25，56<=50，57<=75） ----
-    testHealthPercent = 0.0f;
-    Expect("hp=0 id55", RunId(55), 1);
-    Expect("hp=0 id56", RunId(56), 1);
-    Expect("hp=0 id57", RunId(57), 1);
-    testHealthPercent = 25.0f;
-    Expect("hp=25 id55", RunId(55), 1);
-    testHealthPercent = 25.01f;
-    Expect("hp=25.01 id55", RunId(55), 0);
-    Expect("hp=25.01 id56", RunId(56), 1);
-    Expect("hp=25.01 id57", RunId(57), 1);
-    testHealthPercent = 50.0f;
-    Expect("hp=50 id56", RunId(56), 1);
-    testHealthPercent = 50.01f;
-    Expect("hp=50.01 id56", RunId(56), 0);
-    Expect("hp=50.01 id57", RunId(57), 1);
-    testHealthPercent = 75.0f;
-    Expect("hp=75 id57", RunId(57), 1);
-    testHealthPercent = 75.01f;
-    Expect("hp=75.01 id57", RunId(57), 0);
+    // ---- 人物血量锁存显示（55<=25，56<=50，57<=75；归零复位） ----
+    ResetRuleLatches();
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id55 initial", RunId(55), 0);
+    Expect("hp=100 id56 initial", RunId(56), 0);
+    Expect("hp=100 id57 initial", RunId(57), 0);
 
-    // ---- 人物血量百分比反向规则（58=0隐藏，59/60/61 达到累计上限时隐藏） ----
-    testHealthPercent = 0.0f;
-    Expect("hp=0 id58", RunId(58), 0);
-    Expect("hp=0 id59", RunId(59), 0);
-    Expect("hp=0 id60", RunId(60), 0);
-    Expect("hp=0 id61", RunId(61), 0);
-    testHealthPercent = 0.01f;
-    Expect("hp=.01 id58", RunId(58), 1);
-    Expect("hp=.01 id59", RunId(59), 0);
     testHealthPercent = 25.0f;
-    Expect("hp=25 id59", RunId(59), 0);
-    testHealthPercent = 25.01f;
-    Expect("hp=25.01 id59", RunId(59), 1);
-    Expect("hp=25.01 id60", RunId(60), 0);
-    Expect("hp=25.01 id61", RunId(61), 0);
+    Expect("hp=25 id55 trigger", RunId(55), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id55 latched", RunId(55), 1);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id55 reset", RunId(55), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id55 reset", RunId(55), 0);
+
     testHealthPercent = 50.0f;
-    Expect("hp=50 id60", RunId(60), 0);
-    testHealthPercent = 50.01f;
-    Expect("hp=50.01 id60", RunId(60), 1);
-    Expect("hp=50.01 id61", RunId(61), 0);
+    Expect("hp=50 id56 trigger", RunId(56), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id56 latched", RunId(56), 1);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id56 reset", RunId(56), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id56 reset", RunId(56), 0);
+
     testHealthPercent = 75.0f;
-    Expect("hp=75 id61", RunId(61), 0);
-    testHealthPercent = 75.01f;
-    Expect("hp=75.01 id61", RunId(61), 1);
+    Expect("hp=75 id57 trigger", RunId(57), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id57 latched", RunId(57), 1);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id57 reset", RunId(57), 0);
+
+    // 配置重载和玩家实体切换也必须清除锁存。
+    testHealthPercent = 25.0f;
+    Expect("hp=25 id55 relatch", RunId(55), 1);
+    plugin::LoadConfig();
+    testHealthPercent = 100.0f;
+    Expect("reload resets id55", RunId(55), 0);
+    testHealthPercent = 25.0f;
+    Expect("hp=25 id55 relatch2", RunId(55), 1);
+    player::StateSnapshot changedEntity;
+    changedEntity.entityAddress = 2;
+    changedEntity.healthPercent = 100.0f;
+    player::PublishState(changedEntity);
+    testHealthPercent = 100.0f;
+    Expect("entity resets id55", RunId(55), 0);
+
+    // ---- 反向锁存（58=0即时隐藏；59/60/61 达阈值后隐藏至归零） ----
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id58", RunId(58), 1);
+    Expect("hp=100 id59 initial", RunId(59), 1);
+    Expect("hp=100 id60 initial", RunId(60), 1);
+    Expect("hp=100 id61 initial", RunId(61), 1);
+
+    testHealthPercent = 25.0f;
+    Expect("hp=25 id59 trigger", RunId(59), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id59 latched", RunId(59), 0);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id58 instant", RunId(58), 0);
+    Expect("hp=0 id59 reset", RunId(59), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id59 reset", RunId(59), 1);
+
+    testHealthPercent = 50.0f;
+    Expect("hp=50 id60 trigger", RunId(60), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id60 latched", RunId(60), 0);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id60 reset", RunId(60), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id60 reset", RunId(60), 1);
+
+    testHealthPercent = 75.0f;
+    Expect("hp=75 id61 trigger", RunId(61), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id61 latched", RunId(61), 0);
+    testHealthPercent = 0.0f;
+    Expect("hp=0 id61 reset", RunId(61), 1);
 
     // ---- 未配置的 ID 透传 ----
     Expect("id99 passthrough", RunId(99), -1);

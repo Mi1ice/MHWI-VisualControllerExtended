@@ -69,7 +69,7 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
     Id=30
     Return=0          ; 否则隐藏 ID 30 下全部网格
 
-条件键汇总：Id（必填）、WeaponType（武器类型）、Spirit（练气值）、SpiritMin/SpiritMax（练气值范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（血量百分比大于）、Return（1/0）。
+条件键汇总：Id（必填）、WeaponType（武器类型）、Spirit（练气值）、SpiritMin/SpiritMax（练气值范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（血量百分比大于）、LatchUntilHealthZero（命中后锁存至血量归零）、Return（1/0）。
 `Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
 
 兼容原变身插件规则：
@@ -83,8 +83,8 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 - 太刀累计显示：ID36 白刃及以上显示，ID37 黄刃及以上显示。
 - 太刀累计隐藏：ID38 白刃及以上隐藏，ID39 黄刃及以上隐藏，ID40 红刃隐藏。
 - 血量分段显示：ID50=`0%`，ID51=`(0%,25%]`，ID52=`(25%,50%]`，ID53=`(50%,75%]`，ID54=`(75%,100%]`；对应区间内显示。
-- 血量累计显示：ID55/56/57 分别在血量 `<=25%/50%/75%` 时显示。
-- 血量累计隐藏：ID58 在血量为0时隐藏；ID59/60/61 分别在血量 `<=25%/50%/75%` 时隐藏。
+- 血量锁存显示：ID55/56/57 首次进入 `(0%,25%/50%/75%]` 后持续显示，血量归零后复位为隐藏。
+- 血量锁存隐藏：ID58 在血量为0时即时隐藏；ID59/60/61 首次进入 `(0%,25%/50%/75%]` 后持续隐藏，血量归零后复位为显示。
 
 - ID36-40尚未支持虫棍点灯。
 
