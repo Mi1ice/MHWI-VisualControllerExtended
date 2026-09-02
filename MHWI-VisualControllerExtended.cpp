@@ -928,9 +928,8 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             if (rule.healthPercentAbove >= 0.0f && healthPercent <= rule.healthPercentAbove) continue;
             const bool result = rule.result != 0;
             if (rule.latchUntilHealthZero) {
-                // 0% 是复位条件，不能在同一次查询中重新触发锁存。
-                if (healthPercent <= 0.0f) continue;
-                LatchResult(id, result, latchEpoch);
+                // 0% 会复位已有锁存，但当前查询仍按规则返回；仅正血量重新锁存。
+                if (healthPercent > 0.0f) LatchResult(id, result, latchEpoch);
             }
             return result;
         }
@@ -1457,7 +1456,7 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id55 latched", RunId(55), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id55 reset", RunId(55), 0);
+    Expect("hp=0 id55 reset", RunId(55), 1);
     testHealthPercent = 100.0f;
     Expect("hp=100 id55 reset", RunId(55), 0);
 
@@ -1466,7 +1465,7 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id56 latched", RunId(56), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id56 reset", RunId(56), 0);
+    Expect("hp=0 id56 reset", RunId(56), 1);
     testHealthPercent = 100.0f;
     Expect("hp=100 id56 reset", RunId(56), 0);
 
@@ -1475,7 +1474,9 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id57 latched", RunId(57), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id57 reset", RunId(57), 0);
+    Expect("hp=0 id57 reset", RunId(57), 1);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id57 reset", RunId(57), 0);
 
     // 配置重载和玩家实体切换也必须清除锁存。
     testHealthPercent = 25.0f;
@@ -1505,7 +1506,7 @@ int main()
     Expect("hp=100 id59 latched", RunId(59), 0);
     testHealthPercent = 0.0f;
     Expect("hp=0 id58 instant", RunId(58), 0);
-    Expect("hp=0 id59 reset", RunId(59), 1);
+    Expect("hp=0 id59 reset", RunId(59), 0);
     testHealthPercent = 100.0f;
     Expect("hp=100 id59 reset", RunId(59), 1);
 
@@ -1514,7 +1515,7 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id60 latched", RunId(60), 0);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id60 reset", RunId(60), 1);
+    Expect("hp=0 id60 reset", RunId(60), 0);
     testHealthPercent = 100.0f;
     Expect("hp=100 id60 reset", RunId(60), 1);
 
@@ -1523,7 +1524,9 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id61 latched", RunId(61), 0);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id61 reset", RunId(61), 1);
+    Expect("hp=0 id61 reset", RunId(61), 0);
+    testHealthPercent = 100.0f;
+    Expect("hp=100 id61 reset", RunId(61), 1);
 
     // ---- 未配置的 ID 透传 ----
     Expect("id99 passthrough", RunId(99), -1);
