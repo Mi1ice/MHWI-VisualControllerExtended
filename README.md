@@ -1,7 +1,7 @@
 # MHWI-VisualControllerExtended
 
 《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
-当前版本：1.1.0。
+当前版本：1.2.0。
 
 ## 构建
 
