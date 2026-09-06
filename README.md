@@ -10,9 +10,8 @@
 
 ## 安装
 
-把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏根目录 nativePC\plugins\中。
+把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏根目录\nativePC\plugins\中。
 需求前置 Stracker's Loader。
-建议使用狩技 mod 盒子加载。
 
 所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
 DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
