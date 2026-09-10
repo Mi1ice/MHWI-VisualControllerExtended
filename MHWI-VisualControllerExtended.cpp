@@ -1280,8 +1280,8 @@ int main()
     }
 
     const int ruleCount = gRuleCounts[gActiveRuleBuffer];
-    printf("rules loaded: %d (expect 55)\n", ruleCount);
-    if (ruleCount != 55) ++gFailureCount;
+    printf("rules loaded: %d (expect 58)\n", ruleCount);
+    if (ruleCount != 58) ++gFailureCount;
     for (int ruleIndex = 0; ruleIndex < ruleCount; ++ruleIndex) {
         const IdRule& rule = gRuleBuffers[gActiveRuleBuffer][ruleIndex];
         printf("  rule%02d id=%d wt=%2d sp=%2d lmt=[%6d,%6d] ret=%d\n",
@@ -1413,6 +1413,18 @@ int main()
     testWeaponType = 3; testDemonMode = 1; testArchdemonMode = 1;
     Expect("wt=3 dm=1 id22", RunId(22), 1);
     Expect("wt=3 arch=1 id23", RunId(23), 1);
+
+    // ---- 同一 ID 多条规则构成“或”（ID29：太刀红刃 或 双刀鬼人强化） ----
+    testWeaponType = 3; testSpiritLevel = 3; testArchdemonMode = 0;
+    Expect("wt=3 red id29", RunId(29), 1);
+    testSpiritLevel = 2; testArchdemonMode = 1;
+    Expect("wt=3 yellow id29", RunId(29), 0);
+    testWeaponType = 2; testSpiritLevel = 3; testArchdemonMode = 1;
+    Expect("wt=2 arch=1 id29", RunId(29), 1);
+    testArchdemonMode = 0;
+    Expect("wt=2 arch=0 id29", RunId(29), 0);
+    testWeaponType = 10; testSpiritLevel = 3; testArchdemonMode = 1;
+    Expect("wt=10 states id29", RunId(29), 0);
 
     // ---- 人物血量百分比边界（50=0，51=(0,25]，52=(25,50]，53=(50,75]，54=(75,100]） ----
     testHealthPercent = 0.0f;
