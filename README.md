@@ -1,7 +1,7 @@
 # MHWI-VisualControllerExtended
 
 《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
-当前版本：1.2.0。
+当前版本：1.3.0。
 
 ## 构建
 
@@ -13,8 +13,7 @@
 把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏根目录\nativePC\plugins\中。
 需求前置 Stracker's Loader。
 
-所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
-DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
+所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 
 ## 规则配置
 
@@ -78,8 +77,9 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 
 插件新增规则：
 
-跨武器状态：
-- ID29 在太刀进入红刃，或双刀进入鬼人强化时显示；其他状态隐藏。同一 ID 的多条条件规则可用于表达“或”。
+“强化”状态：
+- ID29：在进入预定义的“强化”状态时显示。当前覆盖：1.太刀进入红刃; 2.双刀进入鬼人强化。其他状态隐藏。
+- 预期增加：虫棍：点完三灯；盾斧：红盾\剑\斧；大剑、弓：蓄力时：其它：没玩过。
 
 双刀：
 - 双刀鬼人化状态：ID20/21 分别在鬼人化/鬼人强化成立时显示；ID22/23 分别在鬼人化/鬼人强化成立时隐藏。
@@ -110,8 +110,8 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 ## 已知限制
 
 - 在存档选择界面不生效。
-- 大量修改了VIsualCondition的值，可能造成游戏场景中物体错误的隐藏或显示。
-- detour 当前按已验证接口转发 4 个寄存器参数；若后续游戏版本开始使用额外堆栈参数，需要同步更新函数声明。
+- 大量修改了VisualCondition的值，可能造成游戏场景中物体错误的隐藏或显示。
+- 当前锁存键仅有在血量降为0时重置，计划增加：切换场景后、装备更新后重置。
 - 内存地址针对 15.23.00；游戏更新后需更新 PlayerRoot / 消息缓冲地址，目标函数由签名扫描定位，通常不受版本影响。
 - 状态条件最多有约 PollMs 毫秒的快照延迟；默认 60ms，换取加载期和跨 MOD 的稳定性。
 
