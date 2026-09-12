@@ -1303,8 +1303,8 @@ int main()
 
     partialState.weaponType = 2;
     player::PublishState(partialState);
-    Expect("arch unavailable id21", RunId(21), -1);
-    Expect("health unavailable id50", RunId(50), -1);
+    Expect("arch unavailable id23", RunId(23), -1);
+    Expect("health unavailable id42", RunId(42), -1);
 
     player::StateSnapshot readyState;
     readyState.entityAddress = 1;
@@ -1380,165 +1380,165 @@ int main()
     Expect("wt=10 sp=3 id39", RunId(39), 1);
     Expect("wt=10 sp=3 id40", RunId(40), 1);
 
-    // ---- 双刀鬼人化（ID 20：weapon==2 且 demon==1 -> true，否则 false） ----
+    // ---- 双刀鬼人化（ID 22：weapon==2 且 demon==1 -> true，否则 false） ----
     testActionLmt = -1; testSpiritLevel = -1;
     testWeaponType = 2; testDemonMode = 0;
-    Expect("wt=2 dm=0 id20", RunId(20), 0);
+    Expect("wt=2 dm=0 id22", RunId(22), 0);
     testWeaponType = 2; testDemonMode = 1;
-    Expect("wt=2 dm=1 id20", RunId(20), 1);
+    Expect("wt=2 dm=1 id22", RunId(22), 1);
     testWeaponType = 3; testDemonMode = 1;    // 太刀不受此规则影响
-    Expect("wt=3 dm=1 id20", RunId(20), 0);
+    Expect("wt=3 dm=1 id22", RunId(22), 0);
 
-    // ---- 双刀鬼人强化（ID 21：weapon==2 且 archdemon==1 -> true，否则 false） ----
+    // ---- 双刀鬼人强化（ID 23：weapon==2 且 archdemon==1 -> true，否则 false） ----
     testDemonMode = 0;
     testWeaponType = 2; testArchdemonMode = 0;
-    Expect("wt=2 arch=0 id21", RunId(21), 0);
+    Expect("wt=2 arch=0 id23", RunId(23), 0);
     testArchdemonMode = 1;
-    Expect("wt=2 arch=1 id21", RunId(21), 1);
+    Expect("wt=2 arch=1 id23", RunId(23), 1);
     testWeaponType = 3;
-    Expect("wt=3 arch=1 id21", RunId(21), 0);
+    Expect("wt=3 arch=1 id23", RunId(23), 0);
 
-    // ID 20 仅由 Demon 控制，不受 Archdemon 影响。
+    // ID 22 仅由 Demon 控制，不受 Archdemon 影响。
     testWeaponType = 2; testDemonMode = 0; testArchdemonMode = 1;
-    Expect("arch=1 dm=0 id20", RunId(20), 0);
+    Expect("arch=1 dm=0 id22", RunId(22), 0);
 
-    // ---- 双刀状态反向控制（ID22/23：状态成立时隐藏，否则显示） ----
+    // ---- 双刀状态反向控制（ID24/25：状态成立时隐藏，否则显示） ----
     testWeaponType = 2; testDemonMode = 0; testArchdemonMode = 0;
-    Expect("wt=2 dm=0 id22", RunId(22), 1);
-    Expect("wt=2 arch=0 id23", RunId(23), 1);
+    Expect("wt=2 dm=0 id24", RunId(24), 1);
+    Expect("wt=2 arch=0 id25", RunId(25), 1);
     testDemonMode = 1;
-    Expect("wt=2 dm=1 id22", RunId(22), 0);
+    Expect("wt=2 dm=1 id24", RunId(24), 0);
     testDemonMode = 0; testArchdemonMode = 1;
-    Expect("wt=2 arch=1 id23", RunId(23), 0);
+    Expect("wt=2 arch=1 id25", RunId(25), 0);
     testWeaponType = 3; testDemonMode = 1; testArchdemonMode = 1;
-    Expect("wt=3 dm=1 id22", RunId(22), 1);
-    Expect("wt=3 arch=1 id23", RunId(23), 1);
+    Expect("wt=3 dm=1 id24", RunId(24), 1);
+    Expect("wt=3 arch=1 id25", RunId(25), 1);
 
-    // ---- 同一 ID 多条规则构成“或”（ID29：太刀红刃 或 双刀鬼人强化） ----
+    // ---- 同一 ID 多条规则构成“或”（ID50：太刀红刃 或 双刀鬼人强化） ----
     testWeaponType = 3; testSpiritLevel = 3; testArchdemonMode = 0;
-    Expect("wt=3 red id29", RunId(29), 1);
+    Expect("wt=3 red id50", RunId(50), 1);
     testSpiritLevel = 2; testArchdemonMode = 1;
-    Expect("wt=3 yellow id29", RunId(29), 0);
+    Expect("wt=3 yellow id50", RunId(50), 0);
     testWeaponType = 2; testSpiritLevel = 3; testArchdemonMode = 1;
-    Expect("wt=2 arch=1 id29", RunId(29), 1);
+    Expect("wt=2 arch=1 id50", RunId(50), 1);
     testArchdemonMode = 0;
-    Expect("wt=2 arch=0 id29", RunId(29), 0);
+    Expect("wt=2 arch=0 id50", RunId(50), 0);
     testWeaponType = 10; testSpiritLevel = 3; testArchdemonMode = 1;
-    Expect("wt=10 states id29", RunId(29), 0);
+    Expect("wt=10 states id50", RunId(50), 0);
 
-    // ---- 人物血量百分比边界（50=0，51=(0,25]，52=(25,50]，53=(50,75]，54=(75,100]） ----
+    // ---- 人物血量百分比边界（42=0，43=(0,25]，44=(25,50]，45=(50,75]，46=(75,100]） ----
     testHealthPercent = 0.0f;
-    Expect("hp=0 id50", RunId(50), 1);
-    Expect("hp=0 id51", RunId(51), 0);
+    Expect("hp=0 id42", RunId(42), 1);
+    Expect("hp=0 id43", RunId(43), 0);
     testHealthPercent = 0.01f;
-    Expect("hp=.01 id50", RunId(50), 0);
-    Expect("hp=.01 id51", RunId(51), 1);
+    Expect("hp=.01 id42", RunId(42), 0);
+    Expect("hp=.01 id43", RunId(43), 1);
     testHealthPercent = 25.0f;
-    Expect("hp=25 id51", RunId(51), 1);
-    Expect("hp=25 id52", RunId(52), 0);
+    Expect("hp=25 id43", RunId(43), 1);
+    Expect("hp=25 id44", RunId(44), 0);
     testHealthPercent = 25.01f;
-    Expect("hp=25.01 id51", RunId(51), 0);
-    Expect("hp=25.01 id52", RunId(52), 1);
+    Expect("hp=25.01 id43", RunId(43), 0);
+    Expect("hp=25.01 id44", RunId(44), 1);
     testHealthPercent = 50.0f;
-    Expect("hp=50 id52", RunId(52), 1);
-    Expect("hp=50 id53", RunId(53), 0);
+    Expect("hp=50 id44", RunId(44), 1);
+    Expect("hp=50 id45", RunId(45), 0);
     testHealthPercent = 50.01f;
-    Expect("hp=50.01 id52", RunId(52), 0);
-    Expect("hp=50.01 id53", RunId(53), 1);
+    Expect("hp=50.01 id44", RunId(44), 0);
+    Expect("hp=50.01 id45", RunId(45), 1);
     testHealthPercent = 75.0f;
-    Expect("hp=75 id53", RunId(53), 1);
-    Expect("hp=75 id54", RunId(54), 0);
+    Expect("hp=75 id45", RunId(45), 1);
+    Expect("hp=75 id46", RunId(46), 0);
     testHealthPercent = 75.01f;
-    Expect("hp=75.01 id53", RunId(53), 0);
-    Expect("hp=75.01 id54", RunId(54), 1);
+    Expect("hp=75.01 id45", RunId(45), 0);
+    Expect("hp=75.01 id46", RunId(46), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id54", RunId(54), 1);
+    Expect("hp=100 id46", RunId(46), 1);
     testHealthPercent = 100.01f;
-    Expect("hp=100.01 id54", RunId(54), 0);
+    Expect("hp=100.01 id46", RunId(46), 0);
 
-    // ---- 人物血量锁存显示（55<=25，56<=50，57<=75；归零复位） ----
+    // ---- 人物血量锁存显示（47<=25，48<=50，49<=75；归零复位） ----
     ResetRuleLatches();
     testHealthPercent = 100.0f;
-    Expect("hp=100 id55 initial", RunId(55), 0);
-    Expect("hp=100 id56 initial", RunId(56), 0);
-    Expect("hp=100 id57 initial", RunId(57), 0);
+    Expect("hp=100 id47 initial", RunId(47), 0);
+    Expect("hp=100 id48 initial", RunId(48), 0);
+    Expect("hp=100 id49 initial", RunId(49), 0);
 
     testHealthPercent = 25.0f;
-    Expect("hp=25 id55 trigger", RunId(55), 1);
+    Expect("hp=25 id47 trigger", RunId(47), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id55 latched", RunId(55), 1);
+    Expect("hp=100 id47 latched", RunId(47), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id55 reset", RunId(55), 1);
+    Expect("hp=0 id47 reset", RunId(47), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id55 reset", RunId(55), 0);
+    Expect("hp=100 id47 reset", RunId(47), 0);
 
     testHealthPercent = 50.0f;
-    Expect("hp=50 id56 trigger", RunId(56), 1);
+    Expect("hp=50 id48 trigger", RunId(48), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id56 latched", RunId(56), 1);
+    Expect("hp=100 id48 latched", RunId(48), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id56 reset", RunId(56), 1);
+    Expect("hp=0 id48 reset", RunId(48), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id56 reset", RunId(56), 0);
+    Expect("hp=100 id48 reset", RunId(48), 0);
 
     testHealthPercent = 75.0f;
-    Expect("hp=75 id57 trigger", RunId(57), 1);
+    Expect("hp=75 id49 trigger", RunId(49), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id57 latched", RunId(57), 1);
+    Expect("hp=100 id49 latched", RunId(49), 1);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id57 reset", RunId(57), 1);
+    Expect("hp=0 id49 reset", RunId(49), 1);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id57 reset", RunId(57), 0);
+    Expect("hp=100 id49 reset", RunId(49), 0);
 
     // 配置重载和玩家实体切换也必须清除锁存。
     testHealthPercent = 25.0f;
-    Expect("hp=25 id55 relatch", RunId(55), 1);
+    Expect("hp=25 id47 relatch", RunId(47), 1);
     plugin::LoadConfig();
     testHealthPercent = 100.0f;
-    Expect("reload resets id55", RunId(55), 0);
+    Expect("reload resets id47", RunId(47), 0);
     testHealthPercent = 25.0f;
-    Expect("hp=25 id55 relatch2", RunId(55), 1);
+    Expect("hp=25 id47 relatch2", RunId(47), 1);
     player::StateSnapshot changedEntity;
     changedEntity.entityAddress = 2;
     changedEntity.healthPercent = 100.0f;
     player::PublishState(changedEntity);
     testHealthPercent = 100.0f;
-    Expect("entity resets id55", RunId(55), 0);
+    Expect("entity resets id47", RunId(47), 0);
 
-    // ---- 反向锁存（58=0即时隐藏；59/60/61 达阈值后隐藏至归零） ----
+    // ---- 反向锁存（52=0即时隐藏；53/54/55 达阈值后隐藏至归零） ----
     testHealthPercent = 100.0f;
-    Expect("hp=100 id58", RunId(58), 1);
-    Expect("hp=100 id59 initial", RunId(59), 1);
-    Expect("hp=100 id60 initial", RunId(60), 1);
-    Expect("hp=100 id61 initial", RunId(61), 1);
+    Expect("hp=100 id52", RunId(52), 1);
+    Expect("hp=100 id53 initial", RunId(53), 1);
+    Expect("hp=100 id54 initial", RunId(54), 1);
+    Expect("hp=100 id55 initial", RunId(55), 1);
 
     testHealthPercent = 25.0f;
-    Expect("hp=25 id59 trigger", RunId(59), 0);
+    Expect("hp=25 id53 trigger", RunId(53), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id59 latched", RunId(59), 0);
+    Expect("hp=100 id53 latched", RunId(53), 0);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id58 instant", RunId(58), 0);
-    Expect("hp=0 id59 reset", RunId(59), 0);
+    Expect("hp=0 id52 instant", RunId(52), 0);
+    Expect("hp=0 id53 reset", RunId(53), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id59 reset", RunId(59), 1);
+    Expect("hp=100 id53 reset", RunId(53), 1);
 
     testHealthPercent = 50.0f;
-    Expect("hp=50 id60 trigger", RunId(60), 0);
+    Expect("hp=50 id54 trigger", RunId(54), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id60 latched", RunId(60), 0);
+    Expect("hp=100 id54 latched", RunId(54), 0);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id60 reset", RunId(60), 0);
+    Expect("hp=0 id54 reset", RunId(54), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id60 reset", RunId(60), 1);
+    Expect("hp=100 id54 reset", RunId(54), 1);
 
     testHealthPercent = 75.0f;
-    Expect("hp=75 id61 trigger", RunId(61), 0);
+    Expect("hp=75 id55 trigger", RunId(55), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id61 latched", RunId(61), 0);
+    Expect("hp=100 id55 latched", RunId(55), 0);
     testHealthPercent = 0.0f;
-    Expect("hp=0 id61 reset", RunId(61), 0);
+    Expect("hp=0 id55 reset", RunId(55), 0);
     testHealthPercent = 100.0f;
-    Expect("hp=100 id61 reset", RunId(61), 1);
+    Expect("hp=100 id55 reset", RunId(55), 1);
 
     // ---- 未配置的 ID 透传 ----
     Expect("id99 passthrough", RunId(99), -1);
