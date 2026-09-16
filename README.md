@@ -1,32 +1,7 @@
 # MHWI-VisualControllerExtended
 
 《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
-当前版本：1.3.1。
-
-### v1.3.1 Group ID 迁移对照
-
-更新现有外观 MOD 时，请将原 `Group_ID` 替换为对应的新 ID。ID30–40 保持不变。
-
-| 功能 | 原 ID | 新 ID |
-|---|---:|---:|
-| 双刀鬼人化时显示 | 20 | 22 |
-| 双刀鬼人强化时显示 | 21 | 23 |
-| 双刀鬼人化时隐藏 | 22 | 24 |
-| 双刀鬼人强化时隐藏 | 23 | 25 |
-| 预定义的“强化”状态时显示 | 29 | 50 |
-| 动作及太刀规则 | 30–40 | 30–40 |
-| 血量等于 0% 时显示 | 50 | 42 |
-| 血量在 (0%,25%] 时显示 | 51 | 43 |
-| 血量在 (25%,50%] 时显示 | 52 | 44 |
-| 血量在 (50%,75%] 时显示 | 53 | 45 |
-| 血量在 (75%,100%] 时显示 | 54 | 46 |
-| 血量不高于 25% 后锁存显示 | 55 | 47 |
-| 血量不高于 50% 后锁存显示 | 56 | 48 |
-| 血量不高于 75% 后锁存显示 | 57 | 49 |
-| 血量等于 0% 时隐藏 | 58 | 52 |
-| 血量不高于 25% 后锁存隐藏 | 59 | 53 |
-| 血量不高于 50% 后锁存隐藏 | 60 | 54 |
-| 血量不高于 75% 后锁存隐藏 | 61 | 55 |
+当前版本：1.3.2。
 
 ## 构建
 
@@ -38,8 +13,7 @@
 把 MHWI-VisualControllerExtended.dll 和 MHWI-VisualControllerExtended.ini 放进游戏根目录\nativePC\plugins\中。
 需求前置 Stracker's Loader。
 
-所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新
-DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
+所有规则仅保存在 ini 中，DLL 不包含内置回退规则。ini 缺失、为空或没有有效的`[RuleN]` 时，规则数为 0，所有 ID 都透传给下一 Hook 或游戏原函数。因此安装或更新DLL 时必须同时保留或更新 MHWI-VisualControllerExtended.ini。
 
 ## 规则配置
 
@@ -93,7 +67,7 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
     Id=30
     Return=0          ; 否则隐藏 ID 30 下全部网格
 
-条件键汇总：Id（必填）、WeaponType（武器类型）、Spirit（练气值）、SpiritMin/SpiritMax（练气值范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（血量百分比大于）、LatchUntilHealthZero（命中后锁存至血量归零）、Return（1/0）。
+条件键汇总：Id（必填）、WeaponType（武器类型）、Spirit（练气值）、SpiritMin/SpiritMax（练气值范围）、LmtMin/LmtMax（动作 lmt 范围）、Demon（鬼人化）、DemonMin/DemonMax（鬼人化范围）、Archdemon（鬼人强化）、HealthPercentMin/HealthPercentMax（血量百分比范围，包含边界）、HealthPercentAbove（血量百分比大于）、LatchUntilReset（命中后锁存至任一复位条件发生）、Return（1/0）。
 `Return=1` 表示显示该 ID 下全部网格；`Return=0` 表示隐藏该 ID 下全部网格。范围键缺省 -1 表示不限；同一 ID 可写多条，首条命中生效。
 
 兼容原变身插件规则：
@@ -119,7 +93,7 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 - 血量锁存显示：ID47/48/49 在 `[0%,25%/50%/75%]` 内显示；正血量首次命中后持续显示，血量归零时复位。
 - 血量锁存隐藏：ID52 在血量为0时即时隐藏；ID53/54/55 在 `[0%,25%/50%/75%]` 内隐藏，正血量首次命中后持续隐藏，血量归零时复位。
 - 可自定义区间更小的血量百分比条件，以实现更细致的变化。*需修改对应外观MOD的Group_ID以匹配规则*
-- 锁存：即触发后无论血量如何变化，显隐状态不变，猫车后重置显隐状态为初始态，继续根据条件变化判断是否触发并锁存。若要显隐状态完全跟随血量变化，删除键LatchUntilHealthZero或将键值设为0。
+- 锁存：即触发后无论血量如何变化，显隐状态不变；血量归零、角色实体变化、当前地图变化或重载配置时重置为初始态。若要显隐状态完全跟随血量变化，删除键 `LatchUntilReset` 或将键值设为 0。
 
 ## 热键与指令
 
@@ -127,7 +101,7 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 |---|---|
 | Ctrl+F5 | 重载 ini |
 | Ctrl+F9 | 开关（关闭时全部透传） |
-| /vc status | 聊天栏显示 hook 状态、血量、练气、鬼人化、鬼人强化、动作、武器及 fsm |
+| /vc status | 聊天栏显示 hook 状态、血量、练气、鬼人化、鬼人强化、动作、武器、地图及 fsm |
 | /vc reload、/vc on、/vc off、/vc help | 同热键 / 帮助 |
 
 日志写在 DLL 同目录 MHWI-VisualControllerExtended.log，含每 4 秒的状态心跳，可用于观察各状态值随游戏行为的变化。
@@ -138,6 +112,46 @@ DLL 时必须同时保留 MHWI-VisualControllerExtended.ini。
 - 大量修改了VisualCondition的值，可能造成游戏场景中物体错误的隐藏或显示。
 - 内存地址针对 15.23.00；游戏更新后需更新 PlayerRoot / 消息缓冲地址，目标函数由签名扫描定位，通常不受版本影响。
 - 状态条件最多有约 PollMs 毫秒的快照延迟；默认 60ms，换取加载期和跨 MOD 的稳定性。
+- 当前地图读取使用 `MapRootRva=0x500CDA0` 和 CT 的 `0x80 → 0xEEC0 → 0x118` 指针链；游戏版本更新后可能需要同步更新该 RVA，设为 `0` 可禁用地图变化复位。
+
+## 更新日志
+
+### v1.3.2
+
+新增地图变化复位：首次读取当前地图只建立基线；后续有效地图 ID 发生变化时清除全部锁存。地图地址链暂时不可读不会触发复位。
+
+配置键 `LatchUntilHealthZero` 已更名为 `LatchUntilReset`。旧键不再识别，升级时需手动替换。
+
+### v1.3.1
+
+重新分配ID以避免ID21与ID51控制网格的错误隐藏。
+
+更新现有外观 MOD 时，请将原 `Group_ID` 替换为对应的新 ID。ID30–40 保持不变。
+
+| 功能 | 原 ID | 新 ID |
+|---|---:|---:|
+| 双刀鬼人化时显示 | 20 | 22 |
+| 双刀鬼人强化时显示 | 21 | 23 |
+| 双刀鬼人化时隐藏 | 22 | 24 |
+| 双刀鬼人强化时隐藏 | 23 | 25 |
+| 预定义的“强化”状态时显示 | 29 | 50 |
+| 动作及太刀规则 | 30–40 | 30–40 |
+| 血量等于 0% 时显示 | 50 | 42 |
+| 血量在 (0%,25%] 时显示 | 51 | 43 |
+| 血量在 (25%,50%] 时显示 | 52 | 44 |
+| 血量在 (50%,75%] 时显示 | 53 | 45 |
+| 血量在 (75%,100%] 时显示 | 54 | 46 |
+| 血量不高于 25% 后锁存显示 | 55 | 47 |
+| 血量不高于 50% 后锁存显示 | 56 | 48 |
+| 血量不高于 75% 后锁存显示 | 57 | 49 |
+| 血量等于 0% 时隐藏 | 58 | 52 |
+| 血量不高于 25% 后锁存隐藏 | 59 | 53 |
+| 血量不高于 50% 后锁存隐藏 | 60 | 54 |
+| 血量不高于 75% 后锁存隐藏 | 61 | 55 |
+
+### v1.0.0
+
+First release.
 
 ## 许可与免责
 

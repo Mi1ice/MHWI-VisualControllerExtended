@@ -128,10 +128,12 @@ void ObserveHealthForLatchReset(float healthPercent);
 //    动作状态机 fsm = *(Entity+0x6278)
 //    当前血量 health = *(*(Entity+0x7630) + 0x64)
 //    最大血量 maxHealth = *(*(Entity+0x7630) + 0x60)
+//    当前地图 map = uint16(*(*(*(MapRoot)+0x80)+0xEEC0)+0x118)
 // ===========================================================================
 namespace player {
 
 std::uintptr_t gPlayerRootAddress = 0x1450139A0ULL;  // ini 可覆盖
+std::uintptr_t gMapRootAddress = 0;                   // gameBase + MapRootRva
 std::uintptr_t gManagerAddress = 0;                  // *(Root)，调试用
 std::uintptr_t gEntityAddress = 0;                   // *(Manager+0x50)，调试用
 
@@ -144,6 +146,7 @@ volatile int gArchdemonMode = -1;
 volatile float gCurrentHealth = -1.0f;
 volatile float gMaxHealth = -1.0f;
 volatile float gHealthPercent = -1.0f;
+volatile int gCurrentMapId = -1;
 
 struct StateSnapshot {
     std::uintptr_t managerAddress = 0;
@@ -157,19 +160,58 @@ struct StateSnapshot {
     float currentHealth = -1.0f;
     float maxHealth = -1.0f;
     float healthPercent = -1.0f;
+    int currentMapId = -1;
 };
 
 SRWLOCK gStateLock = SRWLOCK_INIT;
 StateSnapshot gPublishedState;
+int gLastValidMapId = -1; // 由 gStateLock 保护；读取失败时保留上一次有效值
+
+void ResetMapTracking()
+{
+    ::AcquireSRWLockExclusive(&gStateLock);
+    gLastValidMapId = -1;
+    gPublishedState.currentMapId = -1;
+    ::ReleaseSRWLockExclusive(&gStateLock);
+    gCurrentMapId = -1;
+}
+
+void SetMapRootAddress(std::uintptr_t address)
+{
+    if (gMapRootAddress == address) return;
+    gMapRootAddress = address;
+    ResetMapTracking();
+}
+
+bool ReadCurrentMap(int& currentMapId)
+{
+    currentMapId = -1;
+    // CE: [[[*MapRoot + 0x80] + 0xEEC0] + 0x118], uint16
+    static const std::uint32_t mapOffsets[] = {0x0, 0x80, 0xEEC0};
+    const std::uintptr_t mapData = mem::Walk(gMapRootAddress, mapOffsets, 3);
+    if (mapData == 0) return false;
+    std::uint16_t value = 0;
+    if (!mem::ReadVal(mapData + 0x118, value)) return false;
+    currentMapId = static_cast<int>(value);
+    return true;
+}
 
 void PublishState(const StateSnapshot& state)
 {
     ::AcquireSRWLockExclusive(&gStateLock);
     const bool entityChanged = gPublishedState.entityAddress != state.entityAddress;
+    bool mapChanged = false;
+    if (state.currentMapId >= 0) {
+        mapChanged = gLastValidMapId >= 0 && gLastValidMapId != state.currentMapId;
+        gLastValidMapId = state.currentMapId;
+    }
     gPublishedState = state;
+    // 地址链暂时不可读时继续公开最后一个有效值，也不把读取失败当作切图。
+    if (gPublishedState.currentMapId < 0)
+        gPublishedState.currentMapId = gLastValidMapId;
     ::ReleaseSRWLockExclusive(&gStateLock);
 
-    if (entityChanged) ResetRuleLatches();
+    if (entityChanged || mapChanged) ResetRuleLatches();
     ObserveHealthForLatchReset(state.healthPercent);
 
     // 保留这些展开字段供日志和聊天状态显示。
@@ -184,6 +226,7 @@ void PublishState(const StateSnapshot& state)
     gCurrentHealth = state.currentHealth;
     gMaxHealth = state.maxHealth;
     gHealthPercent = state.healthPercent;
+    if (state.currentMapId >= 0) gCurrentMapId = state.currentMapId;
 }
 
 StateSnapshot GetStateSnapshot()
@@ -209,6 +252,7 @@ bool CalculateHealthPercent(float currentHealth, float maxHealth, float& healthP
 void Refresh()
 {
     StateSnapshot state;
+    ReadCurrentMap(state.currentMapId);
     std::uintptr_t manager = 0;
     if (mem::ReadVal(gPlayerRootAddress, manager) && manager != 0) {
         state.managerAddress = manager;
@@ -283,7 +327,7 @@ struct IdRule {
     float healthPercentMin;   // 血量百分比下限(含)，负数不限
     float healthPercentMax;   // 血量百分比上限(含)，负数不限
     float healthPercentAbove; // 血量百分比严格下限(不含)，负数不限
-    std::int32_t latchUntilHealthZero; // 命中后锁存返回值，血量归零时复位
+    std::int32_t latchUntilReset; // 命中后锁存返回值；任一复位条件发生时复位
     std::int32_t result;      // 1=true 0=false
 };
 
@@ -548,6 +592,7 @@ const std::uintptr_t kMessageLenOff  = 0xBC;
 const std::uintptr_t kMessageBodyOff = 0xC0;
 
 std::uintptr_t gPlayerRoot = 0x1450139A0ULL;
+std::uintptr_t gMapRootRva = 0x500CDA0ULL; // CT 2.0.6 / GameVersion 421810
 std::uintptr_t gTargetRva  = 0;        // ini: 直接指定目标函数 RVA（跳过签名扫描）
 int gPollMs   = 60;
 int gIdOffset = 4;
@@ -687,6 +732,7 @@ void OnIniValue(const std::string& section, const std::string& key,
 
     if (isGlobalSection) {
         if (key == "PlayerRoot")            gPlayerRoot = ParseU64(value);
+        else if (key == "MapRootRva")       gMapRootRva = ParseU64(value);
         else if (key == "PollMs")        { int v = atoi(value.c_str()); if (v >= 5) gPollMs = v; }
         else if (key == "Enabled")          gEnabled = atoi(value.c_str()) != 0;
         else if (key == "IdOffset")         gIdOffset = ParseInt(value);
@@ -738,7 +784,7 @@ void OnIniValue(const std::string& section, const std::string& key,
         r.healthPercentMin = -1.0f;
         r.healthPercentMax = -1.0f;
         r.healthPercentAbove = -1.0f;
-        r.latchUntilHealthZero = 0;
+        r.latchUntilReset = 0;
         buildContext->rules.push_back(r);
     }
     IdRule& rule = buildContext->rules[idx - 1];
@@ -756,8 +802,8 @@ void OnIniValue(const std::string& section, const std::string& key,
     else if (key == "HealthPercentMin")   rule.healthPercentMin = ParseFloat(value);
     else if (key == "HealthPercentMax")   rule.healthPercentMax = ParseFloat(value);
     else if (key == "HealthPercentAbove") rule.healthPercentAbove = ParseFloat(value);
-    else if (key == "LatchUntilHealthZero")
-        rule.latchUntilHealthZero = atoi(value.c_str()) != 0 ? 1 : 0;
+    else if (key == "LatchUntilReset")
+        rule.latchUntilReset = atoi(value.c_str()) != 0 ? 1 : 0;
     else if (key == "Return")     rule.result = atoi(value.c_str()) != 0 ? 1 : 0;
 }
 
@@ -788,9 +834,12 @@ void LoadConfig()
     }
     PublishRules(buildContext.rules);
     player::gPlayerRootAddress = gPlayerRoot;
-    Log("config: PlayerRoot=0x%llX PollMs=%d Enabled=%d IdOffset=%d TargetRva=0x%llX "
+    player::SetMapRootAddress(gGameBase != 0 && gMapRootRva != 0
+        ? gGameBase + gMapRootRva : 0);
+    Log("config: PlayerRoot=0x%llX MapRootRva=0x%llX PollMs=%d Enabled=%d IdOffset=%d TargetRva=0x%llX "
         "WaitForEarlierHook=%d HookWaitMs=%d rules=%d sigLen=%zu",
-        (unsigned long long)gPlayerRoot, gPollMs, gEnabled, gIdOffset,
+        (unsigned long long)gPlayerRoot, (unsigned long long)gMapRootRva,
+        gPollMs, gEnabled, gIdOffset,
         (unsigned long long)gTargetRva,
         hook::gWaitForEarlierHook, hook::gHookWaitMs,
         gRuleCounts[gActiveRuleBuffer], hook::gSignature.size());
@@ -811,6 +860,7 @@ void ResolveGameBase()
     HMODULE gameModule = ::GetModuleHandleW(L"MonsterHunterWorld.exe");
     if (!gameModule) return;
     gGameBase = reinterpret_cast<std::uintptr_t>(gameModule);
+    player::SetMapRootAddress(gMapRootRva != 0 ? gGameBase + gMapRootRva : 0);
     gSystemMessage = reinterpret_cast<SystemMessageFn>(gGameBase + kSystemMessageRva);
     Log("game base=0x%llX", (unsigned long long)gGameBase);
 }
@@ -891,7 +941,7 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             if (rule.demon >= 0 || rule.demonMin >= 0 || rule.demonMax >= 0) requirements |= kNeedsDemonMode;
             if (rule.archdemon >= 0) requirements |= kNeedsArchdemonMode;
             if (rule.healthPercentMin >= 0.0f || rule.healthPercentMax >= 0.0f ||
-                rule.healthPercentAbove >= 0.0f || rule.latchUntilHealthZero)
+                rule.healthPercentAbove >= 0.0f || rule.latchUntilReset)
                 requirements |= kNeedsHealthPercent;
         }
         int spiritLevel = -1;
@@ -927,7 +977,7 @@ bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t second
             if (rule.healthPercentMax >= 0.0f && healthPercent > rule.healthPercentMax) continue;
             if (rule.healthPercentAbove >= 0.0f && healthPercent <= rule.healthPercentAbove) continue;
             const bool result = rule.result != 0;
-            if (rule.latchUntilHealthZero) {
+            if (rule.latchUntilReset) {
                 // 0% 会复位已有锁存，但当前查询仍按规则返回；仅正血量重新锁存。
                 if (healthPercent > 0.0f) LatchResult(id, result, latchEpoch);
             }
@@ -950,12 +1000,12 @@ bool HandleCommand(const std::string& rest)
         char msg[0x180] = {};
         _snprintf_s(msg, _TRUNCATE,
                     "vc: hook=%s hp=%.1f/%.1f(%.1f%%) weapon=%d spirit=%d demon=%d "
-                    "archdemon=%d lmt=%d fsm=%d rules=%d",
+                    "archdemon=%d lmt=%d fsm=%d map=%d rules=%d",
                     hook::gTargetAddress ? "on" : "OFF",
                     player::gCurrentHealth, player::gMaxHealth, player::gHealthPercent,
                     player::gWeaponType, player::gSpiritLevel,
                     player::gDemonMode, player::gArchdemonMode,
-                    player::gActionLmt, player::gFsmId,
+                    player::gActionLmt, player::gFsmId, player::gCurrentMapId,
                     gRuleCounts[gActiveRuleBuffer]);
         ShowMessage(msg, true);
     } else if (rest == "reload" || rest == "re") {
@@ -1034,7 +1084,7 @@ bool PollChatCommand()
 }
 
 // ===========================================================================
-//  工作线程：等待游戏模块 -> 安装 hook -> 轮询刷新状态(练气/动作/武器/fsm) + 处理指令
+//  工作线程：等待游戏模块 -> 安装 hook -> 轮询刷新状态(练气/动作/武器/地图) + 处理指令
 // ===========================================================================
 DWORD WINAPI WorkerProc(LPVOID)
 {
@@ -1085,34 +1135,37 @@ DWORD WINAPI WorkerProc(LPVOID)
         // 用于确认规则条件的实际取值。
         {
             static int prevSp = -2, prevLmt = -2, prevWt = -2, prevFsm = -2,
-                       prevDm = -2, prevArchdemon = -2;
+                       prevDm = -2, prevArchdemon = -2, prevMap = -2;
             const int spiritLevel = player::gSpiritLevel;
             const int actionLmt = player::gActionLmt;
             const int weaponType = player::gWeaponType;
             const int fsmId = player::gFsmId;
             const int demonMode = player::gDemonMode;
             const int archdemonMode = player::gArchdemonMode;
+            const int currentMapId = player::gCurrentMapId;
             if (spiritLevel != prevSp || actionLmt != prevLmt || weaponType != prevWt ||
-                fsmId != prevFsm || demonMode != prevDm || archdemonMode != prevArchdemon) {
+                fsmId != prevFsm || demonMode != prevDm || archdemonMode != prevArchdemon ||
+                currentMapId != prevMap) {
                 Log("state change: weapon %d->%d  spirit %d->%d  demon %d->%d  "
-                    "archdemon %d->%d  lmt %d->%d  fsm %d->%d",
+                    "archdemon %d->%d  lmt %d->%d  fsm %d->%d  map %d->%d",
                     prevWt, weaponType, prevSp, spiritLevel, prevDm, demonMode,
                     prevArchdemon, archdemonMode,
-                    prevLmt, actionLmt, prevFsm, fsmId);
+                    prevLmt, actionLmt, prevFsm, fsmId, prevMap, currentMapId);
                 prevSp = spiritLevel; prevLmt = actionLmt; prevWt = weaponType;
                 prevFsm = fsmId; prevDm = demonMode; prevArchdemon = archdemonMode;
+                prevMap = currentMapId;
             }
         }
 
         const std::uint64_t nowMs = ::GetTickCount64();
         if (firstState || (nowMs - lastHeartbeat >= 4000)) {
             Log("state: hook=%s hp=%.1f/%.1f(%.1f%%) weapon=%d spirit=%d demon=%d archdemon=%d "
-                "lmt=%d fsm=%d en=%d rules=%d mgr=0x%llX ent=0x%llX",
+                "lmt=%d fsm=%d map=%d en=%d rules=%d mgr=0x%llX ent=0x%llX",
                 hook::gTargetAddress ? "on" : "OFF",
                 player::gCurrentHealth, player::gMaxHealth, player::gHealthPercent,
                 player::gWeaponType, player::gSpiritLevel,
                 player::gDemonMode, player::gArchdemonMode,
-                player::gActionLmt, player::gFsmId,
+                player::gActionLmt, player::gFsmId, player::gCurrentMapId,
                 gEnabled, gRuleCounts[gActiveRuleBuffer],
                 (unsigned long long)player::gManagerAddress,
                 (unsigned long long)player::gEntityAddress);
@@ -1277,6 +1330,27 @@ int main()
         Expect("health over clamp", player::CalculateHealthPercent(120.0f, 100.0f, healthPercent), 1);
         Expect("health over pct", static_cast<int>(healthPercent), 100);
         Expect("health max zero", player::CalculateHealthPercent(0.0f, 0.0f, healthPercent), 0);
+    }
+
+    // ---- CT Current Map 指针链：MapRoot -> +80 -> +EEC0 -> +118(uint16) ----
+    {
+        std::vector<unsigned char> level0(0x88, 0);
+        std::vector<unsigned char> level1(0xEEC8, 0);
+        std::vector<unsigned char> mapData(0x11A, 0);
+        const std::uintptr_t level0Address = reinterpret_cast<std::uintptr_t>(level0.data());
+        const std::uintptr_t level1Address = reinterpret_cast<std::uintptr_t>(level1.data());
+        const std::uintptr_t mapDataAddress = reinterpret_cast<std::uintptr_t>(mapData.data());
+        std::uintptr_t mapRootValue = level0Address;
+        std::memcpy(level0.data() + 0x80, &level1Address, sizeof(level1Address));
+        std::memcpy(level1.data() + 0xEEC0, &mapDataAddress, sizeof(mapDataAddress));
+        const std::uint16_t expectedMapId = 123;
+        std::memcpy(mapData.data() + 0x118, &expectedMapId, sizeof(expectedMapId));
+        player::SetMapRootAddress(reinterpret_cast<std::uintptr_t>(&mapRootValue));
+        int currentMapId = -1;
+        Expect("map chain valid", player::ReadCurrentMap(currentMapId), 1);
+        Expect("map chain value", currentMapId, 123);
+        player::SetMapRootAddress(0);
+        Expect("map chain unavailable", player::ReadCurrentMap(currentMapId), 0);
     }
 
     const int ruleCount = gRuleCounts[gActiveRuleBuffer];
@@ -1490,7 +1564,7 @@ int main()
     testHealthPercent = 100.0f;
     Expect("hp=100 id49 reset", RunId(49), 0);
 
-    // 配置重载和玩家实体切换也必须清除锁存。
+    // 配置重载、玩家实体切换和有效地图变化都必须清除锁存。
     testHealthPercent = 25.0f;
     Expect("hp=25 id47 relatch", RunId(47), 1);
     plugin::LoadConfig();
@@ -1504,6 +1578,28 @@ int main()
     player::PublishState(changedEntity);
     testHealthPercent = 100.0f;
     Expect("entity resets id47", RunId(47), 0);
+
+    // 首个有效地图只建立基线；读取失败和相同地图不复位；有效地图变化才复位。
+    player::ResetMapTracking();
+    testHealthPercent = 25.0f;
+    Expect("hp=25 id47 map latch", RunId(47), 1);
+    player::StateSnapshot mapState;
+    mapState.entityAddress = 2;
+    mapState.healthPercent = 100.0f;
+    mapState.currentMapId = 101;
+    player::PublishState(mapState);
+    testHealthPercent = 100.0f;
+    Expect("first map keeps latch", RunId(47), 1);
+    mapState.currentMapId = -1;
+    player::PublishState(mapState);
+    Expect("map read fail keeps id", player::gCurrentMapId, 101);
+    Expect("map read fail keeps latch", RunId(47), 1);
+    mapState.currentMapId = 101;
+    player::PublishState(mapState);
+    Expect("same map keeps latch", RunId(47), 1);
+    mapState.currentMapId = 102;
+    player::PublishState(mapState);
+    Expect("map change resets id47", RunId(47), 0);
 
     // ---- 反向锁存（52=0即时隐藏；53/54/55 达阈值后隐藏至归零） ----
     testHealthPercent = 100.0f;
