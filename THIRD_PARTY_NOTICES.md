@@ -3,7 +3,7 @@
 MHWI-VisualControllerExtended distributes or adapts the following components. These notices must
 remain with source and binary distributions.
 
-## SafetyHook v0.7.0 (active backend in the test branch)
+## SafetyHook v0.7.0 (active backend since v1.4.0)
 
 Source: https://github.com/cursey/safetyhook/tree/v0.7.0
 
@@ -21,7 +21,7 @@ the original Zydis and Zycore license notices. Retain these notices in distribut
 The official Zydis v4.1.0 amalgamation replaces the older Zydis included in the SafetyHook
 release archive. See `third_party/safetyhook/dependency-lock.json` for provenance and hashes.
 
-## MinHook v1.3.4 (retained source; not linked in the test branch)
+## MinHook v1.3.4 (retained historical source; not linked since v1.4.0)
 
 Source: https://github.com/TsudaKageyu/minhook/tree/v1.3.4
 

@@ -1,6 +1,6 @@
 @echo off
 setlocal
-rem SafetyHook test build. Requires MSVC with C++23 support; no CMake needed.
+rem SafetyHook build. Requires MSVC with C++23 support; no CMake needed.
 cd /d "%~dp0"
 if not exist "build\safetyhook" mkdir "build\safetyhook"
 if errorlevel 1 goto :failed
@@ -41,6 +41,6 @@ if /i not "%~1"=="--no-pause" pause
 exit /b 0
 
 :failed
-echo [ERROR] SafetyHook test build failed.
+echo [ERROR] SafetyHook build failed.
 if /i not "%~1"=="--no-pause" pause
 exit /b 1

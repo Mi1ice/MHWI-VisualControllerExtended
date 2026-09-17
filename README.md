@@ -1,10 +1,10 @@
 # MHWI-VisualControllerExtended
 
 《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
-当前版本：1.3.2-safetyhook-test（实验分支，MSVC 构建及离线测试通过，尚待游戏验证）。
+当前版本：v1.4.0。MSVC 构建及离线测试通过；SafetyHook 测试版本已由用户反馈游戏测试通过。
 
-本分支使用 SafetyHook 0.7.0 + Zydis 4.1.0。MinHook 基线保存在标签
-`baseline/minhook-before-safetyhook`，原工作目录继续使用 `main`。
+自 v1.4.0 起使用 SafetyHook 0.7.0 + Zydis 4.1.0。旧版 MinHook 源码保存在标签
+`v1.3.2` 和 `baseline/minhook-before-safetyhook`，可按标签检出并重新构建。
 
 ## 构建
 
@@ -34,14 +34,14 @@ CMake 的 Release DLL 位于 `build/safetyhook-cmake/Release/`。
 这不代表所有其他挂钩库或 MOD 均兼容，也不覆盖游戏特征码定位和并发压力场景。
 CMake 配置已更新，但本机尚未运行 CMake 构建。
 
-## SafetyHook 测试管理
+## SafetyHook 使用与验证
 
-- 日志启动行包含 `build=1.3.2-safetyhook-test`、后端及依赖版本、编译时间。
+- 日志启动行包含 `build=1.4.0`、后端及依赖版本、编译时间。
 - 先退出游戏，再替换插件 DLL；一次只加载本插件的一个版本。
 - 本插件依赖的原版 `visual_controller_v5` 和 Stracker's Loader 仍需保留。
 - 首先测试必要前置与本插件，再逐个加入其他 MOD，比较入口修改后的安装及行为。
 - 检查规则匹配、原函数透传、配置重载、地图切换与退出游戏是否正常。
-- 本测试版保留 Hook 对象至进程结束，不支持运行中卸载或热替换 DLL。
+- 本插件保留 Hook 对象至进程结束，不支持运行中卸载或热替换 DLL。
 - `VCE_TEST` 现有离线自测可验证规则逻辑，但不能代替真实挂钩与游戏兼容性测试。
 - 回退时退出游戏，恢复基线构建的 DLL，并使用同一份 ini 进行对照。
 
@@ -153,6 +153,14 @@ CMake 配置已更新，但本机尚未运行 CMake 构建。
 
 ## 更新日志
 
+### v1.4.0
+
+将挂钩后端从 MinHook 更换为 SafetyHook 0.7.0，固定使用 Zydis 4.1.0；保留现有规则与配置行为。
+增加创建和启用阶段的详细错误日志，构建要求升级为支持 C++23 的 MSVC。
+137 项离线规则检查、46 项挂钩检查通过；用户反馈 SafetyHook 测试版本游戏测试通过。
+该反馈仅覆盖用户已测试的环境，不代表所有 MOD 组合均已验证；CMake 构建尚未验证。
+旧版 MinHook 实现保留在 `v1.3.2` 标签。
+
 ### v1.3.2
 
 新增地图变化复位：首次读取当前地图只建立基线；后续有效地图 ID 发生变化时清除全部锁存。地图地址链暂时不可读不会触发复位。
@@ -192,6 +200,6 @@ First release.
 
 ## 许可与免责
 
-项目自身代码采用 MIT License。MinHook、WeaponSoundEnhance 和 mhw-toolkit 的许可证及版权声明见 `THIRD_PARTY_NOTICES.md`；发布包同时附带完整的 MinHook/HDE 与 mhw-toolkit Apache-2.0 许可证文本。
+项目自身代码采用 MIT License。SafetyHook、Zydis/Zycore、历史保留的 MinHook、WeaponSoundEnhance 和 mhw-toolkit 的许可证及版权声明见 `THIRD_PARTY_NOTICES.md`；分发时应保留相应许可证。
 
 使用前建议备份存档。

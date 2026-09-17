@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(MHWI-VisualControllerExtended VERSION 1.3.2 LANGUAGES C CXX)
+project(MHWI-VisualControllerExtended VERSION 1.4.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

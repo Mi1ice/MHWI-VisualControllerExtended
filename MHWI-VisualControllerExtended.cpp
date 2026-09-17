@@ -400,7 +400,7 @@ using TargetFn = bool (__fastcall*)(std::uintptr_t, std::uintptr_t,
                                     std::uintptr_t, std::uintptr_t);
 TargetFn gOriginalFunction = nullptr;
 // 成功安装后保留到进程结束，避免在 DLL 卸载锁内析构并修改游戏代码。
-// 本测试版不支持运行中卸载 DLL；切换版本必须先退出游戏。
+// 本插件不支持运行中卸载 DLL；切换版本必须先退出游戏。
 safetyhook::InlineHook* gInlineHook = nullptr;
 std::uintptr_t gTargetAddress = 0;
 volatile int gWaitForEarlierHook = 1;
@@ -1245,7 +1245,7 @@ void Start(HMODULE module)
         ? std::wstring() : modulePath.substr(0, directorySeparator + 1);
     gIniPath = ReplaceExt(modulePath, L".ini");
     LogInit();
-    Log("build=1.3.2-safetyhook-test hook_backend=SafetyHook/0.7.0 Zydis=4.1.0 compiled=%s %s",
+    Log("build=1.4.0 hook_backend=SafetyHook/0.7.0 Zydis=4.1.0 compiled=%s %s",
         __DATE__, __TIME__);
     LoadConfig();
     HANDLE t = ::CreateThread(nullptr, 0, &WorkerProc, nullptr, 0, nullptr);
