@@ -1,12 +1,49 @@
 # MHWI-VisualControllerExtended
 
 《怪物猎人：世界》变身插件拓展。兼容原变身插件visual_controller_v5，请在拥有visual_controller_v5的情况下使用。
-当前版本：1.3.2。
+当前版本：1.3.2-safetyhook-test（实验分支，MSVC 构建及离线测试通过，尚待游戏验证）。
+
+本分支使用 SafetyHook 0.7.0 + Zydis 4.1.0。MinHook 基线保存在标签
+`baseline/minhook-before-safetyhook`，原工作目录继续使用 `main`。
 
 ## 构建
 
-双击 build.bat（自动定位 vcvars64 并调用 cl.exe），产物在 build\MHWI-VisualControllerExtended.dll。
-也可以用 CMake：cmake -B build -A x64 然后 cmake --build build --config Release。
+双击 build.bat（自动定位 vcvars64 并调用 cl.exe），产物在
+`build\safetyhook\MHWI-VisualControllerExtended.dll`。需要支持 C++23 的 MSVC；
+脚本使用 `/std:c++latest`，Zydis 单独按 C 编译，不需要安装 CMake。
+自动化调用可使用 `build.bat --no-pause`。
+
+可选 CMake 构建（需 CMake 3.28 或更新版本）：
+
+```text
+cmake -S . -B build/safetyhook-cmake -A x64
+cmake --build build/safetyhook-cmake --config Release
+```
+
+CMake 的 Release DLL 位于 `build/safetyhook-cmake/Release/`。
+两种方式都使用仓库内的固定依赖，无需构建时下载。
+来源与 SHA256 记录见 `third_party/safetyhook/dependency-lock.json`。
+
+### 离线验证
+
+运行 `test.bat` 会先构建 DLL，再编译并运行规则自测与独立挂钩测试。
+产物和测试日志均写入 `build/safetyhook/`，不访问游戏目录。
+当前 MSVC 19.51 验证结果：137 项规则检查、46 项挂钩检查全部通过。
+挂钩测试覆盖四参数透传、重复安装、禁用/重启、恢复入口字节，
+以及在另一个 SafetyHook 已修改入口后保留调用链。
+这不代表所有其他挂钩库或 MOD 均兼容，也不覆盖游戏特征码定位和并发压力场景。
+CMake 配置已更新，但本机尚未运行 CMake 构建。
+
+## SafetyHook 测试管理
+
+- 日志启动行包含 `build=1.3.2-safetyhook-test`、后端及依赖版本、编译时间。
+- 先退出游戏，再替换插件 DLL；一次只加载本插件的一个版本。
+- 本插件依赖的原版 `visual_controller_v5` 和 Stracker's Loader 仍需保留。
+- 首先测试必要前置与本插件，再逐个加入其他 MOD，比较入口修改后的安装及行为。
+- 检查规则匹配、原函数透传、配置重载、地图切换与退出游戏是否正常。
+- 本测试版保留 Hook 对象至进程结束，不支持运行中卸载或热替换 DLL。
+- `VCE_TEST` 现有离线自测可验证规则逻辑，但不能代替真实挂钩与游戏兼容性测试。
+- 回退时退出游戏，恢复基线构建的 DLL，并使用同一份 ini 进行对照。
 
 ## 安装
 

@@ -7,3 +7,7 @@
 *.h text eol=lf
 *.md text eol=lf
 *.txt text eol=lf
+
+# Preserve upstream dependency bytes to keep dependency-lock.json hashes stable.
+third_party/safetyhook/** -text
+third_party/zydis/** -text
