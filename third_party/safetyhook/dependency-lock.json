@@ -1,0 +1,47 @@
+{
+  "safetyhook": {
+    "url": "https://github.com/cursey/safetyhook/releases/download/v0.7.0/safetyhook-amalgamated-zydis.zip",
+    "commit": "19223663fb8a573253ffb2e82da87cc354bf5c16",
+    "verification": "Matched GitHub release asset digest",
+    "sha256": "505d4c07ec1c5b94a17f3906ca86afbe1264e738d8becaa244866694c6200c2c",
+    "version": "0.7.0"
+  },
+  "zydis": {
+    "url": "https://github.com/zyantific/zydis/releases/download/v4.1.0/zydis-amalgamated.zip",
+    "commit": "569320ad3c4856da13b9dbf1f0d9e20bda63870e",
+    "verification": "Locally computed SHA256; upstream asset has no published digest",
+    "sha256": "6ce26e5bf812aa9384af4a514fe81afa53f3fd00d579ba9d80a710e2218f48ff",
+    "version": "4.1.0"
+  },
+  "notes": [
+    "The SafetyHook release archive contains Zydis with a 4.0.0 version macro. The adjacent Zydis.c and Zydis.h were replaced with the official Zydis v4.1.0 amalgamation, matching the SafetyHook v0.7.0 CMake dependency.",
+    "Embedded Zycore license notices are retained in the Zydis amalgamation.",
+    "Archives are retained as provenance. Compile only the adjacent safetyhook.cpp and Zydis.c; do not compile duplicate sources under third_party/zydis."
+  ],
+  "files": [
+    {
+      "name": "LICENSE.SafetyHook",
+      "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+    },
+    {
+      "name": "LICENSE.Zydis",
+      "sha256": "e5e99718209e94baaf3e9cbf6f64aa3329c9e73c63b1ab47e10f29d81974e6f3"
+    },
+    {
+      "name": "safetyhook.cpp",
+      "sha256": "a5d2377e424d7d222ba4968537daf12b03741ea1ef09f31ad32bd527728ac4d6"
+    },
+    {
+      "name": "safetyhook.hpp",
+      "sha256": "6f8499aadcbc346690c33c877f0a522e689796e8aaef4ea05fb5586416e2c857"
+    },
+    {
+      "name": "Zydis.c",
+      "sha256": "d0c460af81f545971b62a1f5031f3b326e5702d6b34dfa0d99bb5c560e64a5e0"
+    },
+    {
+      "name": "Zydis.h",
+      "sha256": "0012d639a791c92ddd127bd59861aff9aa5105ada88f1c307ba58998ed4f2e02"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 //  Monster Hunter: World / Iceborne (15.23.00) 视觉项 ID 返回值控制插件。
 //
 //  项目代码由规则引擎、只读状态采集和通用 Hook 后端组成。
-//  Hook 创建、指令搬运和线程协调由 BSD-2-Clause 许可的 MinHook v1.3.4 提供。
+//  Hook 创建、指令搬运和线程协调由 BSL-1.0 许可的 SafetyHook v0.7.0 提供。
 //  部分配置与安全内存读取结构参考 MIT 许可的 WeaponSoundEnhance；玩家/武器/聊天
 //  兼容数据与聊天接收行为经该项目参考 Apache-2.0 许可的 mhw-toolkit，并已为本项目
 //  修改。完整声明见 THIRD_PARTY_NOTICES.md。
@@ -21,7 +21,7 @@
 #endif
 #include <windows.h>
 #include <psapi.h>
-#include "third_party/minhook/include/MinHook.h"
+#include "third_party/safetyhook/safetyhook.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -31,6 +31,8 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <new>
+#include <utility>
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "user32.lib")
@@ -390,13 +392,16 @@ void LatchResult(unsigned short id, bool result, LONG epoch)
 
 // ===========================================================================
 //  Hook backend
-//  MinHook 负责 trampoline、指令重定位以及安装期间的线程协调。
+//  SafetyHook 负责 trampoline、指令重定位以及安装期间的线程协调。
 // ===========================================================================
 namespace hook {
 
 using TargetFn = bool (__fastcall*)(std::uintptr_t, std::uintptr_t,
                                     std::uintptr_t, std::uintptr_t);
 TargetFn gOriginalFunction = nullptr;
+// 成功安装后保留到进程结束，避免在 DLL 卸载锁内析构并修改游戏代码。
+// 本插件不支持运行中卸载 DLL；切换版本必须先退出游戏。
+safetyhook::InlineHook* gInlineHook = nullptr;
 std::uintptr_t gTargetAddress = 0;
 volatile int gWaitForEarlierHook = 1;
 int gHookWaitMs = 2000;
@@ -491,7 +496,7 @@ std::uintptr_t FindTarget()
     if (fullMatches == 1) return targetAddress;
 
     // 若另一个通用 inline hook 已替换入口，使用未被入口跳转覆盖的签名尾部
-    // 重新定位原函数。后续链路由 MinHook 的 trampoline 处理。
+    // 重新定位原函数。后续链路由 SafetyHook 的 trampoline 处理，兼容性需实测。
     if (fullMatches == 0 && gWaitForEarlierHook &&
         gSignature.size() > kPrefixProbeLength) {
         std::uintptr_t suffixAddress = 0;
@@ -518,6 +523,31 @@ bool __fastcall Detour(std::uintptr_t firstArgument,
                        std::uintptr_t queryObject,
                        std::uintptr_t fourthArgument);
 
+void LogHookError(const char* stage, std::uintptr_t target,
+                  const safetyhook::InlineHook::Error& error)
+{
+    using Error = safetyhook::InlineHook::Error;
+    const char* name = "UNKNOWN";
+    switch (error.type) {
+    case Error::BAD_ALLOCATION: name = "BAD_ALLOCATION"; break;
+    case Error::FAILED_TO_DECODE_INSTRUCTION: name = "FAILED_TO_DECODE_INSTRUCTION"; break;
+    case Error::SHORT_JUMP_IN_TRAMPOLINE: name = "SHORT_JUMP_IN_TRAMPOLINE"; break;
+    case Error::IP_RELATIVE_INSTRUCTION_OUT_OF_RANGE: name = "IP_RELATIVE_INSTRUCTION_OUT_OF_RANGE"; break;
+    case Error::UNSUPPORTED_INSTRUCTION_IN_TRAMPOLINE: name = "UNSUPPORTED_INSTRUCTION_IN_TRAMPOLINE"; break;
+    case Error::FAILED_TO_UNPROTECT: name = "FAILED_TO_UNPROTECT"; break;
+    case Error::NOT_ENOUGH_SPACE: name = "NOT_ENOUGH_SPACE"; break;
+    }
+    if (error.type == Error::BAD_ALLOCATION) {
+        const char* detail = error.allocator_error == safetyhook::Allocator::Error::BAD_VIRTUAL_ALLOC
+            ? "BAD_VIRTUAL_ALLOC" : "NO_MEMORY_IN_RANGE";
+        Log("SafetyHook %s failed at 0x%llX: %s (%s)", stage,
+            static_cast<unsigned long long>(target), name, detail);
+    } else {
+        Log("SafetyHook %s failed at 0x%llX: %s (ip=%p)", stage,
+            static_cast<unsigned long long>(target), name, static_cast<void*>(error.ip));
+    }
+}
+
 bool Install(std::uintptr_t directTarget = 0)
 {
     if (gTargetAddress != 0) return true;
@@ -529,39 +559,32 @@ bool Install(std::uintptr_t directTarget = 0)
         return false;
     }
 
-    const MH_STATUS initializeStatus = ::MH_Initialize();
-    if (initializeStatus != MH_OK &&
-        initializeStatus != MH_ERROR_ALREADY_INITIALIZED) {
-        Log("MinHook initialize failed: %s",
-            ::MH_StatusToString(initializeStatus));
+    auto created = safetyhook::InlineHook::create(
+        reinterpret_cast<void*>(targetAddress), reinterpret_cast<void*>(&Detour),
+        safetyhook::InlineHook::StartDisabled);
+    if (!created) {
+        LogHookError("create", targetAddress, created.error());
         return false;
     }
 
-    LPVOID trampoline = nullptr;
-    const MH_STATUS createStatus = ::MH_CreateHook(
-        reinterpret_cast<LPVOID>(targetAddress),
-        reinterpret_cast<LPVOID>(&Detour), &trampoline);
-    if (createStatus != MH_OK) {
-        Log("MinHook create failed at 0x%llX: %s",
-            static_cast<unsigned long long>(targetAddress),
-            ::MH_StatusToString(createStatus));
+    gInlineHook = new (std::nothrow) safetyhook::InlineHook(std::move(*created));
+    if (!gInlineHook) {
+        Log("SafetyHook owner allocation failed");
         return false;
     }
-
-    gOriginalFunction = reinterpret_cast<TargetFn>(trampoline);
-    const MH_STATUS enableStatus =
-        ::MH_EnableHook(reinterpret_cast<LPVOID>(targetAddress));
-    if (enableStatus != MH_OK) {
+    // 回调可在 enable 返回前执行，必须先发布原函数指针。
+    gOriginalFunction = gInlineHook->original<TargetFn>();
+    const auto enabled = gInlineHook->enable();
+    if (!enabled) {
+        LogHookError("enable", targetAddress, enabled.error());
         gOriginalFunction = nullptr;
-        ::MH_RemoveHook(reinterpret_cast<LPVOID>(targetAddress));
-        Log("MinHook enable failed at 0x%llX: %s",
-            static_cast<unsigned long long>(targetAddress),
-            ::MH_StatusToString(enableStatus));
+        delete gInlineHook;
+        gInlineHook = nullptr;
         return false;
     }
 
     gTargetAddress = targetAddress;
-    Log("hook installed via MinHook at 0x%llX",
+    Log("hook installed via SafetyHook 0.7.0 at 0x%llX",
         static_cast<unsigned long long>(targetAddress));
     return true;
 }
@@ -917,7 +940,7 @@ StateReader gStateReader = &ReadCachedState;
 } // namespace plugin
 
 // Detour 放在 hook 命名空间，调用约定与目标函数一致。
-// 查询函数使用四个寄存器参数；其余调用现场由 MinHook trampoline 保持。
+// 查询函数使用四个寄存器参数；其余调用现场由 SafetyHook trampoline 保持。
 bool __fastcall hook::Detour(std::uintptr_t firstArgument, std::uintptr_t secondArgument,
                              std::uintptr_t queryObject, std::uintptr_t fourthArgument)
 {
@@ -1222,6 +1245,8 @@ void Start(HMODULE module)
         ? std::wstring() : modulePath.substr(0, directorySeparator + 1);
     gIniPath = ReplaceExt(modulePath, L".ini");
     LogInit();
+    Log("build=1.4.0 hook_backend=SafetyHook/0.7.0 Zydis=4.1.0 compiled=%s %s",
+        __DATE__, __TIME__);
     LoadConfig();
     HANDLE t = ::CreateThread(nullptr, 0, &WorkerProc, nullptr, 0, nullptr);
     if (t) ::CloseHandle(t);
