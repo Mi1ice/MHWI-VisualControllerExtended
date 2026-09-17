@@ -596,6 +596,8 @@ bool Install(std::uintptr_t directTarget = 0)
 // ===========================================================================
 namespace plugin {
 
+constexpr char kVersion[] = "1.4.0";
+
 HMODULE gModule = nullptr;
 volatile LONG gStop = 0;
 std::wstring gModuleDir;
@@ -633,7 +635,7 @@ void LogInit()
 {
     gLogPath = gModuleDir + L"MHWI-VisualControllerExtended.log";
     ::DeleteFileW(gLogPath.c_str());
-    Log("MHWI-VisualControllerExtended 1.1.0 starting");
+    Log("MHWI-VisualControllerExtended %s starting", kVersion);
 }
 void Log(const char* fmt, ...)
 {
@@ -1245,8 +1247,8 @@ void Start(HMODULE module)
         ? std::wstring() : modulePath.substr(0, directorySeparator + 1);
     gIniPath = ReplaceExt(modulePath, L".ini");
     LogInit();
-    Log("build=1.4.0 hook_backend=SafetyHook/0.7.0 Zydis=4.1.0 compiled=%s %s",
-        __DATE__, __TIME__);
+    Log("build=%s hook_backend=SafetyHook/0.7.0 Zydis=4.1.0 compiled=%s %s",
+        kVersion, __DATE__, __TIME__);
     LoadConfig();
     HANDLE t = ::CreateThread(nullptr, 0, &WorkerProc, nullptr, 0, nullptr);
     if (t) ::CloseHandle(t);
